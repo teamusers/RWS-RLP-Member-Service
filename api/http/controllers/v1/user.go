@@ -48,54 +48,28 @@ func GetUser(c *gin.Context) {
 
 	switch signUpType {
 	case "new":
-		// Get a database handle.
 		db := system.GetDb()
-		// Attempt to find a user by email.
+
 		var user model.User
-		err := db.Preload("PhoneNumbers").Where("email = ?", email).First(&user).Error
+		err := db.Where("email = ?", email).First(&user).Error
 		if err == nil {
-			// User found: return an error indicating that the email already exists.
-			c.JSON(201, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"message": "email registered",
-				"data": gin.H{
-					"otp":          nil,
-					"otp_expireIn": nil,
-				},
+				"data":    user, 
 			})
 			return
 		}
-		if err != gorm.ErrRecordNotFound {
-			// An unexpected error occurred during the query.
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
 
-		// If we reach here, it means user was not found.
-		// Generate OTP using the service.
-		otpService := services.NewOTPService()
-		ctx := context.Background()
-		otpResp, err := otpService.GenerateOTP(ctx, email)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate OTP"})
-			return
-		}
-
-		//send email
-
-		// Return the response with the custom JSON format.
-		c.JSON(http.StatusOK, gin.H{
-			"message": "email not registered",
-			"data": gin.H{
-				"otp":          otpResp.OTP,
-				"otp_expireIn": otpResp.ExpiresAt,
-			},
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sign up type provided"})
 	}
 }
 
-// CreateUser handles POST /users - create a new user along with (optional) phone numbers.
 func CreateUser(c *gin.Context) {
 	db := system.GetDb()
 	var user model.User
@@ -104,6 +78,8 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	var req SignUpRequest
+	email := req.Email
 
 	// Check if a user with the same email already exists.
 	var existingUser model.User
@@ -121,6 +97,12 @@ func CreateUser(c *gin.Context) {
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now
+	otpService := services.NewOTPService()
+	ctx := context.Background()
+	otpResp, _ := otpService.GenerateOTP(ctx, email)
+
+	user.SessionToken = otpResp.OTP
+	user.SessionExpiry = otpResp.ExpiresAt
 
 	// Create the user along with any associated phone numbers.
 	if err := db.Create(&user).Error; err != nil {
@@ -136,67 +118,6 @@ func CreateUser(c *gin.Context) {
 	})
 }
 
-// UpdateUser handles PUT /users/:id - update an existing user and optionally update phone numbers.
-func UpdateUser(c *gin.Context) {
-	db := system.GetDb()
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-	var user model.User
-	if err := db.Preload("PhoneNumbers").First(&user, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		}
-		return
-	}
-
-	var updatedData model.User
-	if err := c.ShouldBindJSON(&updatedData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Update core user fields
-	user.ExternalID = updatedData.ExternalID
-	user.OptedIn = updatedData.OptedIn
-	user.ExternalTYPE = updatedData.ExternalTYPE
-	user.Email = updatedData.Email
-	user.DOB = updatedData.DOB
-	user.Country = updatedData.Country
-	user.FirstName = updatedData.FirstName
-	user.LastName = updatedData.LastName
-	user.BurnPin = updatedData.BurnPin
-	user.UpdatedAt = time.Now()
-
-	// Optionally, update phone numbers.
-	// Here we replace all existing phone numbers if new ones are provided.
-	if len(updatedData.PhoneNumbers) > 0 {
-		// Delete the current phone numbers for this user.
-		if err := db.Where("user_id = ?", user.ID).Delete(&model.UserPhoneNumber{}).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		user.PhoneNumbers = updatedData.PhoneNumbers
-		// Optionally, iterate over the new phone numbers to set their timestamps and foreign key.
-		now := time.Now()
-		for idx := range user.PhoneNumbers {
-			user.PhoneNumbers[idx].UserID = user.ID
-			user.PhoneNumbers[idx].CreatedAt = now
-			user.PhoneNumbers[idx].UpdatedAt = now
-		}
-	}
-
-	if err := db.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, user)
-}
 
 // DeleteUser handles DELETE /users/:id - delete a user and cascade delete phone numbers.
 func DeleteUser(c *gin.Context) {

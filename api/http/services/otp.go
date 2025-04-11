@@ -28,8 +28,6 @@ func NewOTPService() OTPService {
 	return &otpService{}
 }
 
-// GenerateOTP generates a 6-digit OTP, stores it in Redis with a 30-minute expiration,
-// and returns the OTP along with its expiration time.
 func (s *otpService) GenerateOTP(ctx context.Context, identifier string) (OTPResponse, error) {
 	// Seed the random number generator (consider seeding once in your application's startup in production)
 	rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -38,17 +36,8 @@ func (s *otpService) GenerateOTP(ctx context.Context, identifier string) (OTPRes
 	otp := rand.Intn(900000) + 100000
 	otpStr := strconv.Itoa(otp)
 
-	// Define the Redis key (e.g., "otp:user@example.com").
-	key := "otp:" + identifier
 
-	// Set an expiration duration, e.g., 30 minutes.
-	expiration := 30 * time.Minute
-
-	// Store the OTP in Redis.
-	err := system.GetRedis().Set(ctx, key, otpStr, expiration).Err()
-	if err != nil {
-		return OTPResponse{}, fmt.Errorf("failed to store OTP in Redis: %v", err)
-	}
+	expiration := 365 * 24 * time.Hour
 
 	// Calculate the expiration timestamp.
 	expiresAt := time.Now().Add(expiration).Unix()

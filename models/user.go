@@ -75,21 +75,17 @@ func (d *Date) Scan(value interface{}) error {
 
 // User represents a user model that maps to a MySQL table.
 type User struct {
-	ID           uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	ExternalID   string    `gorm:"column:external_id;size:50" json:"external_id"`
-	OptedIn      bool      `gorm:"column:opted_in" json:"opted_in"`
-	ExternalTYPE string    `gorm:"column:external_id_type;size:50" json:"external_id2"`
-	Email        string    `gorm:"column:email;size:255" json:"email"`
-	DOB          Date      `gorm:"column:dob" json:"dob"`
-	Country      string    `gorm:"column:country;size:3" json:"country"`
-	FirstName    string    `gorm:"column:first_name;size:255" json:"first_name"`
-	LastName     string    `gorm:"column:last_name;size:255" json:"last_name"`
-	BurnPin      string    `gorm:"column:burn_pin;size:4" json:"burn_pin"`
-	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at"`
-
-	// PhoneNumbers represents the one-to-many relationship to UserPhoneNumber.
-	PhoneNumbers []UserPhoneNumber `gorm:"foreignKey:UserID;references:ID" json:"phone_numbers"`
+	ID           						uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Email        						string    `gorm:"column:email;size:255" json:"email"`
+	BurnPin      						uint64    `gorm:"column:burn_pin" json:"burn_pin"`
+	SessionToken      			string    `gorm:"column:session_token" json:"session_token"`
+	SessionExpiry      			int64 		`gorm:"column:session_expiry" json:"session_expiry"`
+	GR_ID      							string    `gorm:"column:gr_id" json:"gr_id"`
+	RLP_ID      						string    `gorm:"column:rlp_id" json:"rlp_id"`
+	RWS_Membership_ID      	string    `gorm:"column:rws_membership_id" json:"rws_membership_id"`
+	RWS_Membership_Number   uint64    `gorm:"column:rws_membership_number" json:"rws_membership_number"`
+	CreatedAt    						time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    						time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 // TableName sets the table name for the User model.
@@ -97,19 +93,3 @@ func (User) TableName() string {
 	return "users"
 }
 
-type UserPhoneNumber struct {
-	ID              uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	UserID          uint64    `gorm:"column:user_id" json:"user_id"` // foreign key to User.ID
-	PhoneNumber     string    `gorm:"column:phone_number;size:20" json:"phone_number"`
-	PhoneType       string    `gorm:"column:phone_type;size:20" json:"phone_type"`
-	PreferenceFlags string    `gorm:"column:preference_flags;size:50" json:"preference_flags"`
-	CreatedAt       time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time `gorm:"column:updated_at" json:"updated_at"`
-}
-
-// If your actual table name is `user_phone_numbers` (plural), you can
-// explicitly specify it below. Otherwise, GORM might pluralize the struct
-// name by default.
-func (UserPhoneNumber) TableName() string {
-	return "users_phone_numbers"
-}
