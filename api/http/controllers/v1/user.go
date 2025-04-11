@@ -1,7 +1,6 @@
 package home
 
 import (
-	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"rlp-member-service/api/http/services"
 	model "rlp-member-service/models"
 	"rlp-member-service/system"
 )
@@ -31,7 +29,6 @@ func GetUsers(c *gin.Context) {
 // SignUpRequest represents the expected JSON structure for the request body.
 type SignUpRequest struct {
 	Email      string `json:"email" binding:"required,email"`
-	SignUpType string `json:"sign_up_type" binding:"required"`
 }
 
 // GetUsers handles GET /users
@@ -43,31 +40,26 @@ func GetUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid email and sign_up_type are required in the request body"})
 		return
 	}
-	email := req.Email
-	signUpType := req.SignUpType
+		email := req.Email
 
-	switch signUpType {
-	case "new":
 		db := system.GetDb()
 
 		var user model.User
 		err := db.Where("email = ?", email).First(&user).Error
 		if err == nil {
-			c.JSON(http.StatusOK, gin.H{
+			c.JSON(http.StatusConflict, gin.H{
 				"message": "email registered",
 				"data":    user, 
 			})
 			return
 		}
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		if err != gorm.ErrRecordNotFound {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sign up type provided"})
-	}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "email not registered",
+		})
 }
 
 func CreateUser(c *gin.Context) {
@@ -78,8 +70,6 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var req SignUpRequest
-	email := req.Email
 
 	// Check if a user with the same email already exists.
 	var existingUser model.User
@@ -97,20 +87,13 @@ func CreateUser(c *gin.Context) {
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now
-	otpService := services.NewOTPService()
-	ctx := context.Background()
-	otpResp, _ := otpService.GenerateOTP(ctx, email)
 
-	user.SessionToken = otpResp.OTP
-	user.SessionExpiry = otpResp.ExpiresAt
 
 	// Create the user along with any associated phone numbers.
 	if err := db.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	// RLP - API
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "user created",

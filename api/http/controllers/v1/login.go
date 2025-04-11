@@ -3,7 +3,6 @@ package home
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -42,8 +41,6 @@ func Login(c *gin.Context) {
 			c.JSON(201, gin.H{
 				"message": "email not found",
 				"data": gin.H{
-					"otp":               nil,
-					"otp_expireIn":      nil,
 					"loginSessionToken": nil,
 					"login_expireIn":    nil,
 				},
@@ -55,30 +52,54 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// If the user exists, generate OTP using the service.
-	otpService := services.NewOTPService()
-	ctx := context.Background()
-	otpResp, err := otpService.GenerateOTP(ctx, email)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate OTP"})
-		return
-	}
-
-	//Call send email services
-
-	//Call IDP to return login session token & login expirein
-	loginSessionToken := "idpSessionToken-ToBeProvide"
-	login_expireIn := 30 * time.Minute //to be provide later
-
 	// Return the response with the custom JSON format.
 	c.JSON(http.StatusOK, gin.H{
 		"message": "email found",
 		"data": gin.H{
-			"otp":               otpResp.OTP,
-			"otp_expireIn":      otpResp.ExpiresAt,
-			"loginSessionToken": loginSessionToken,
-			"login_expireIn":    login_expireIn,
+			"loginSessionToken": user.SessionToken,
+			"login_expireIn":    user.SessionExpiry,
 		},
 	})
 
 }
+func CreateUserSessionToken(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid email is required in the request body"})
+		return
+	}
+	email := req.Email
+
+	db := system.GetDb()
+
+	var user model.User
+	if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	otpService := services.NewOTPService()
+	ctx := context.Background()
+	otpResp, err := otpService.GenerateOTP(ctx, email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate session token"})
+		return
+	}
+
+	user.SessionToken = otpResp.OTP
+	user.SessionExpiry = otpResp.ExpiresAt
+
+	if err := db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user with session token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Session token generated",
+		"data": gin.H{
+			"loginSessionToken": user.SessionToken,
+			"login_expireIn":    user.SessionExpiry,
+		},
+	})
+}
+
