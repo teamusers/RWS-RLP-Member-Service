@@ -27,7 +27,6 @@ func Routers(e *gin.RouterGroup) {
 	{
 		// The endpoints below will all require a valid access token.
 		loginGroup.GET("", v1.Login)
-		loginGroup.PUT("", v1.CreateUserSessionToken)
 		//usersGroup.DELETE("/:id", v1.DeleteUser)
 	}
 
