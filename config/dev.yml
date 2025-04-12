@@ -26,7 +26,7 @@ cmd:
   host: localhost
 
 http:
-  port: 18080
+  port: 18081
 
 allStart: 1
 proxyEnable : true
