@@ -59,7 +59,10 @@ func CreateUser(c *gin.Context) {
 	var user model.User
 	// Bind the incoming JSON payload to the user struct.
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		resp := responses.ErrorResponse{
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
@@ -88,7 +91,10 @@ func CreateUser(c *gin.Context) {
 
 	// Create the user along with any associated phone numbers.
 	if err := db.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		resp := responses.ErrorResponse{
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 
