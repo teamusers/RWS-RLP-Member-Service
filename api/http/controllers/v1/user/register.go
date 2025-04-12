@@ -8,58 +8,40 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"rlp-member-service/api/http/requests"
 	model "rlp-member-service/models"
 	"rlp-member-service/system"
 )
-
-// GetUsers handles GET /users - list all users along with their phone numbers.
-/**
-func GetUsers(c *gin.Context) {
-	db := system.GetDb()
-	var users []model.User
-	// Preload phone numbers to include them in the JSON response
-	if err := db.Preload("PhoneNumbers").Find(&users).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, users)
-}
-**/
-
-// SignUpRequest represents the expected JSON structure for the request body.
-type SignUpRequest struct {
-	Email      string `json:"email" binding:"required,email"`
-}
 
 // GetUsers handles GET /users
 // If a user with the provided email already exists, it returns an error that the email already exists.
 // If no user is found, it continues to generate an OTP.
 func GetUser(c *gin.Context) {
-	var req SignUpRequest
+	var req requests.SignUpRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid email and sign_up_type are required in the request body"})
 		return
 	}
-		email := req.Email
+	email := req.Email
 
-		db := system.GetDb()
+	db := system.GetDb()
 
-		var user model.User
-		err := db.Where("email = ?", email).First(&user).Error
-		if err == nil {
-			c.JSON(http.StatusConflict, gin.H{
-				"message": "email registered",
-				"data":    user, 
-			})
-			return
-		}
-		if err != gorm.ErrRecordNotFound {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"message": "email not registered",
+	var user model.User
+	err := db.Where("email = ?", email).First(&user).Error
+	if err == nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"message": "email registered",
+			"data":    user,
 		})
+		return
+	}
+	if err != gorm.ErrRecordNotFound {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "email not registered",
+	})
 }
 
 func CreateUser(c *gin.Context) {
@@ -88,7 +70,6 @@ func CreateUser(c *gin.Context) {
 	user.CreatedAt = now
 	user.UpdatedAt = now
 
-
 	// Create the user along with any associated phone numbers.
 	if err := db.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -100,7 +81,6 @@ func CreateUser(c *gin.Context) {
 		"data":    user,
 	})
 }
-
 
 // DeleteUser handles DELETE /users/:id - delete a user and cascade delete phone numbers.
 func DeleteUser(c *gin.Context) {

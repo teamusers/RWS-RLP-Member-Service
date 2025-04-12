@@ -7,27 +7,22 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"rlp-member-service/api/http/requests"
 	"rlp-member-service/api/interceptor"
 	model "rlp-member-service/models"
 	"rlp-member-service/system"
 )
 
-// SignUpRequest represents the expected JSON structure for the request body.
-type LoginRequest struct {
-	Email string `json:"email" binding:"required,email"`
-}
-
 // GetUsers handles GET /users
 // If a user with the provided email already exists, it returns an error that the email not exists.
 // If no user is found, it continues to generate an OTP.
 func Login(c *gin.Context) {
-	var req LoginRequest
+	var req requests.LoginRequest
 	// Bind the JSON payload to LoginRequest struct.
 	appID := c.GetHeader("AppID")
 	if appID == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "APPId not found",
-			
 		})
 		return
 	}
@@ -71,7 +66,6 @@ func Login(c *gin.Context) {
 
 	user.SessionToken = token
 	user.SessionExpiry = expiresAt
-
 
 	if err := db.Save(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user with session token"})
