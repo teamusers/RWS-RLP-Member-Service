@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"rlp-member-service/api/http/requests"
+	"rlp-member-service/api/http/responses"
 	"rlp-member-service/api/interceptor"
 	model "rlp-member-service/models"
 	"rlp-member-service/system"
@@ -21,14 +22,18 @@ func Login(c *gin.Context) {
 	// Bind the JSON payload to LoginRequest struct.
 	appID := c.GetHeader("AppID")
 	if appID == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "APPId not found",
-		})
+		resp := responses.ErrorResponse{
+			Error: "APPId not found",
+		}
+		c.JSON(http.StatusMethodNotAllowed, resp)
 		return
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid email is required in the request body"})
+		resp := responses.ErrorResponse{
+			Error: "Valid email is required in the request body",
+		}
+		c.JSON(http.StatusMethodNotAllowed, resp)
 		return
 	}
 	email := req.Email
@@ -52,13 +57,19 @@ func Login(c *gin.Context) {
 			return
 		}
 		// For any other errors, return an internal server error.
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		resp := responses.ErrorResponse{
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 
 	token, err := interceptor.GenerateToken(appID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		resp := responses.ErrorResponse{
+			Error: "Failed to generate token",
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 	expiration := 365 * 24 * time.Hour
@@ -68,7 +79,10 @@ func Login(c *gin.Context) {
 	user.SessionExpiry = expiresAt
 
 	if err := db.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user with session token"})
+		resp := responses.ErrorResponse{
+			Error: "Failed to update user with session token",
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 

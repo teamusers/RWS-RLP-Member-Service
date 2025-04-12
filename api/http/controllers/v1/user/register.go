@@ -2,13 +2,13 @@ package home
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"rlp-member-service/api/http/requests"
+	"rlp-member-service/api/http/responses"
 	model "rlp-member-service/models"
 	"rlp-member-service/system"
 )
@@ -19,7 +19,10 @@ import (
 func GetUser(c *gin.Context) {
 	var req requests.SignUpRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid email and sign_up_type are required in the request body"})
+		resp := responses.ErrorResponse{
+			Error: "Valid email and sign_up_type are required in the request body",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 	email := req.Email
@@ -29,19 +32,26 @@ func GetUser(c *gin.Context) {
 	var user model.User
 	err := db.Where("email = ?", email).First(&user).Error
 	if err == nil {
-		c.JSON(http.StatusConflict, gin.H{
-			"message": "email registered",
-			"data":    user,
-		})
+
+		resp := responses.APIResponse{
+			Message: "email registered",
+			Data:    user,
+		}
+		c.JSON(http.StatusConflict, resp)
 		return
 	}
 	if err != gorm.ErrRecordNotFound {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		resp := responses.ErrorResponse{
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"message": "email not registered",
-	})
+
+	resp := responses.APIResponse{
+		Message: "email not registered",
+	}
+	c.JSON(http.StatusConflict, resp)
 }
 
 func CreateUser(c *gin.Context) {
@@ -57,11 +67,17 @@ func CreateUser(c *gin.Context) {
 	var existingUser model.User
 	if err := db.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
 		// Record found - email already exists.
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already exists"})
+		resp := responses.ErrorResponse{
+			Error: "Email already exists",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	} else if err != gorm.ErrRecordNotFound {
 		// Some other error occurred while querying.
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		resp := responses.ErrorResponse{
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, resp)
 		return
 	}
 
@@ -76,25 +92,10 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "user created",
-		"data":    user,
-	})
-}
+	resp := responses.APIResponse{
+		Message: "user created",
+		Data:    user,
+	}
+	c.JSON(http.StatusCreated, resp)
 
-// DeleteUser handles DELETE /users/:id - delete a user and cascade delete phone numbers.
-func DeleteUser(c *gin.Context) {
-	db := system.GetDb()
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-	// The foreign key constraint (with ON DELETE CASCADE) in the database will handle the deletion of associated phone numbers.
-	if err := db.Delete(&model.User{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"rlp-member-service/codes"
 	model "rlp-member-service/models"
 	"rlp-member-service/system"
 
@@ -15,6 +16,7 @@ import (
 
 	// Adjust the import path based on your project structure and module name.
 	"rlp-member-service/api/http/requests"
+	"rlp-member-service/api/http/responses"
 	"rlp-member-service/api/interceptor"
 )
 
@@ -32,7 +34,10 @@ func getSecretKey(db *gorm.DB, appID string) (string, error) {
 func AuthHandler(c *gin.Context) {
 	// (Optional) Check the request method.
 	if c.Request.Method != http.MethodGet {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method Not Allowed"})
+		resp := responses.ErrorResponse{
+			Error: "Method Not Allowed",
+		}
+		c.JSON(http.StatusMethodNotAllowed, resp)
 		return
 	}
 
@@ -45,19 +50,23 @@ func AuthHandler(c *gin.Context) {
 	// Retrieve the AppID from header.
 	appID := c.GetHeader("AppID")
 	if appID == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "invalid appid",
-			"data": gin.H{
-				"accessToken": nil,
+		resp := responses.APIResponse{
+			Message: "invalid appid",
+			Data: responses.AuthResponse{
+				AccessToken: "",
 			},
-		})
+		}
+		c.JSON(codes.CODE_INVALID_APPID, resp)
 		return
 	}
 
 	// Decode the JSON body.
 	var req requests.AuthRequest
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON body"})
+		resp := responses.ErrorResponse{
+			Error: "Invalid JSON body",
+		}
+		c.JSON(http.StatusMethodNotAllowed, resp)
 		return
 	}
 
@@ -66,50 +75,51 @@ func AuthHandler(c *gin.Context) {
 	secretKey, err := getSecretKey(db, appID)
 
 	if err != nil || secretKey == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "invalid appid",
-			"data": gin.H{
-				"accessToken": nil,
+		resp := responses.APIResponse{
+			Message: "invalid appid",
+			Data: responses.AuthResponse{
+				AccessToken: "",
 			},
-		})
+		}
+		c.JSON(codes.CODE_INVALID_APPID, resp)
 		return
 	}
 
 	// Concatenate AppID, Timestamp, and Nonce to create the base string.
 	baseString := appID + req.Timestamp + req.Nonce
-	fmt.Println("Base String:", baseString)
-
 	// Compute the HMAC-SHA256 signature.
 	mac := hmac.New(sha256.New, []byte(secretKey))
 	mac.Write([]byte(baseString))
 	expectedMAC := mac.Sum(nil)
 	expectedSignature := hex.EncodeToString(expectedMAC)
-	fmt.Println("Expected Signature:", expectedSignature)
 
 	// Compare the computed signature with the provided signature.
 	if !hmac.Equal([]byte(expectedSignature), []byte(req.Signature)) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "invalid signature",
-			"data": gin.H{
-				"accessToken": nil,
+		resp := responses.APIResponse{
+			Message: "invalid signature",
+			Data: responses.AuthResponse{
+				AccessToken: "",
 			},
-		})
+		}
+		c.JSON(codes.CODE_INVALID_SIGNATURE, resp)
 		return
 	}
 
-	// At this point the request is authenticated.
 	// Call the exported GenerateToken function from the middleware package.
 	token, err := interceptor.GenerateToken(appID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		resp := responses.ErrorResponse{
+			Error: "Failed to generate token",
+		}
+		c.JSON(http.StatusMethodNotAllowed, resp)
 		return
 	}
 
-	// Return the JWT token in the JSON response.
-	c.JSON(http.StatusOK, gin.H{
-		"message": "token successfully generated",
-		"data": gin.H{
-			"accessToken": token,
+	resp := responses.APIResponse{
+		Message: "token successfully generated",
+		Data: responses.AuthResponse{
+			AccessToken: token,
 		},
-	})
+	}
+	c.JSON(http.StatusOK, resp)
 }
