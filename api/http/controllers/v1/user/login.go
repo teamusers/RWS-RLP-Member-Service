@@ -9,6 +9,7 @@ import (
 
 	"rlp-member-service/api/http/responses"
 	"rlp-member-service/api/interceptor"
+	"rlp-member-service/codes"
 	model "rlp-member-service/models"
 	"rlp-member-service/system"
 )
@@ -42,13 +43,15 @@ func Login(c *gin.Context) {
 	if err != nil {
 		// If no user is found, return an error.
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(201, gin.H{
-				"message": "email not found",
-				"data": gin.H{
-					"loginSessionToken": nil,
-					"login_expireIn":    nil,
+
+			resp := responses.APIResponse{
+				Message: "email not found",
+				Data: responses.LoginResponse{
+					LoginSessionToken: "",
+					LoginExpireIn:     0,
 				},
-			})
+			}
+			c.JSON(codes.CODE_EMAIL_NOTFOUND, resp)
 			return
 		}
 		// For any other errors, return an internal server error.
@@ -82,13 +85,13 @@ func Login(c *gin.Context) {
 			return
 		}
 	*/
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "email found",
-		"data": gin.H{
-			"loginSessionToken": token,
-			"login_expireIn":    expiresAt,
+	resp := responses.APIResponse{
+		Message: "email found",
+		Data: responses.LoginResponse{
+			LoginSessionToken: token,
+			LoginExpireIn:     expiresAt,
 		},
-	})
+	}
+	c.JSON(http.StatusOK, resp)
 
 }
