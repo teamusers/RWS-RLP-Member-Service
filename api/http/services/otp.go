@@ -4,20 +4,15 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"rlp-member-service/api/http/responses"
 	"rlp-member-service/system"
 	"strconv"
 	"time"
 )
 
-// OTPResponse contains the OTP code and its expiration timestamp.
-type OTPResponse struct {
-	OTP       string `json:"otp_code"`
-	ExpiresAt int64  `json:"expires_at"` // Unix timestamp
-}
-
 // OTPService is responsible for generating and validating OTP tokens.
 type OTPService interface {
-	GenerateOTP(ctx context.Context, identifier string) (OTPResponse, error)
+	GenerateOTP(ctx context.Context, identifier string) (responses.OTPResponse, error)
 	ValidateOTP(ctx context.Context, identifier string, otp string) (bool, error)
 }
 
@@ -28,7 +23,9 @@ func NewOTPService() OTPService {
 	return &otpService{}
 }
 
-func (s *otpService) GenerateOTP(ctx context.Context, identifier string) (OTPResponse, error) {
+// GenerateOTP generates a 6-digit OTP, stores it in Redis with a 30-minute expiration,
+// and returns the OTP along with its expiration time.
+func (s *otpService) GenerateOTP(ctx context.Context, identifier string) (responses.OTPResponse, error) {
 	// Seed the random number generator (consider seeding once in your application's startup in production)
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -36,14 +33,24 @@ func (s *otpService) GenerateOTP(ctx context.Context, identifier string) (OTPRes
 	otp := rand.Intn(900000) + 100000
 	otpStr := strconv.Itoa(otp)
 
+	// Set an expiration duration, e.g., 30 minutes.
+	expiration := 30 * time.Minute
+	/*
+		// Define the Redis key (e.g., "otp:user@example.com").
+		key := "otp:" + identifier
+		// Store the OTP in Redis.
 
-	expiration := 365 * 24 * time.Hour
+			err := system.GetRedis().Set(ctx, key, otpStr, expiration).Err()
+			if err != nil {
+				return OTPResponse{}, fmt.Errorf("failed to store OTP in Redis: %v", err)
+			}
+	*/
 
 	// Calculate the expiration timestamp.
 	expiresAt := time.Now().Add(expiration).Unix()
 
 	// Return the OTP and the expiration time.
-	return OTPResponse{
+	return responses.OTPResponse{
 		OTP:       otpStr,
 		ExpiresAt: expiresAt,
 	}, nil

@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"rlp-member-service/api/http/requests"
 	"rlp-member-service/api/http/responses"
+	"rlp-member-service/codes"
 	model "rlp-member-service/models"
 	"rlp-member-service/system"
 )
@@ -17,15 +17,16 @@ import (
 // If a user with the provided email already exists, it returns an error that the email already exists.
 // If no user is found, it continues to generate an OTP.
 func GetUser(c *gin.Context) {
-	var req requests.SignUpRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	email := c.Param("email")
+	signUpType := c.Param("sign_up_type")
+
+	if email == "" || signUpType == "" {
 		resp := responses.ErrorResponse{
-			Error: "Valid email and sign_up_type are required in the request body",
+			Error: "Valid email and sign_up_type are required as query parameters",
 		}
 		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
-	email := req.Email
 
 	db := system.GetDb()
 
@@ -44,14 +45,14 @@ func GetUser(c *gin.Context) {
 		resp := responses.ErrorResponse{
 			Error: err.Error(),
 		}
-		c.JSON(http.StatusInternalServerError, resp)
+		c.JSON(codes.CODE_EMAIL_REGISTERED, resp)
 		return
 	}
 
 	resp := responses.APIResponse{
 		Message: "email not registered",
 	}
-	c.JSON(http.StatusConflict, resp)
+	c.JSON(http.StatusOK, resp)
 }
 
 func CreateUser(c *gin.Context) {

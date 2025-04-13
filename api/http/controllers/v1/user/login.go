@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"rlp-member-service/api/http/requests"
 	"rlp-member-service/api/http/responses"
 	"rlp-member-service/api/interceptor"
 	model "rlp-member-service/models"
@@ -18,7 +17,6 @@ import (
 // If a user with the provided email already exists, it returns an error that the email not exists.
 // If no user is found, it continues to generate an OTP.
 func Login(c *gin.Context) {
-	var req requests.LoginRequest
 	// Bind the JSON payload to LoginRequest struct.
 	appID := c.GetHeader("AppID")
 	if appID == "" {
@@ -29,14 +27,14 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	email := c.Param("email")
+	if email == "" {
 		resp := responses.ErrorResponse{
-			Error: "Valid email is required in the request body",
+			Error: "Valid email is required as query parameter",
 		}
-		c.JSON(http.StatusMethodNotAllowed, resp)
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
-	email := req.Email
 
 	// Get a database handle.
 	db := system.GetDb()
@@ -78,13 +76,15 @@ func Login(c *gin.Context) {
 	user.SessionToken = token
 	user.SessionExpiry = expiresAt
 
-	if err := db.Save(&user).Error; err != nil {
-		resp := responses.ErrorResponse{
-			Error: "Failed to update user with session token",
+	/*
+		if err := db.Save(&user).Error; err != nil {
+			resp := responses.ErrorResponse{
+				Error: "Failed to update user with session token",
+			}
+			c.JSON(http.StatusInternalServerError, resp)
+			return
 		}
-		c.JSON(http.StatusInternalServerError, resp)
-		return
-	}
+	*/
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "email found",
