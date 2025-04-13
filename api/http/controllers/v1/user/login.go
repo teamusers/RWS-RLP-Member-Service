@@ -13,9 +13,6 @@ import (
 	"rlp-member-service/system"
 )
 
-// GetUsers handles GET /users
-// If a user with the provided email already exists, it returns an error that the email not exists.
-// If no user is found, it continues to generate an OTP.
 func Login(c *gin.Context) {
 	// Bind the JSON payload to LoginRequest struct.
 	appID := c.GetHeader("AppID")

@@ -13,9 +13,6 @@ import (
 	"rlp-member-service/system"
 )
 
-// GetUsers handles GET /users
-// If a user with the provided email already exists, it returns an error that the email already exists.
-// If no user is found, it continues to generate an OTP.
 func GetUser(c *gin.Context) {
 	email := c.Param("email")
 	signUpType := c.Param("sign_up_type")
