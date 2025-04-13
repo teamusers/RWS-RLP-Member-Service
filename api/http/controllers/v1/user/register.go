@@ -35,7 +35,7 @@ func GetUser(c *gin.Context) {
 			Message: "email registered",
 			Data:    user,
 		}
-		c.JSON(http.StatusConflict, resp)
+		c.JSON(codes.CODE_EMAIL_REGISTERED, resp)
 		return
 	}
 	if err != gorm.ErrRecordNotFound {
