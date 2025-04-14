@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// OTPService is responsible for generating and validating OTP tokens.
 type OTPService interface {
 	GenerateOTP(ctx context.Context, identifier string) (responses.OTPResponse, error)
 	ValidateOTP(ctx context.Context, identifier string, otp string) (bool, error)
@@ -18,7 +17,6 @@ type OTPService interface {
 
 type otpService struct{}
 
-// NewOTPService creates an instance of OTPService.
 func NewOTPService() OTPService {
 	return &otpService{}
 }

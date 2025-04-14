@@ -55,7 +55,6 @@ func GetUser(c *gin.Context) {
 func CreateUser(c *gin.Context) {
 	db := system.GetDb()
 	var user model.User
-	// Bind the incoming JSON payload to the user struct.
 	if err := c.ShouldBindJSON(&user); err != nil {
 		resp := responses.ErrorResponse{
 			Error: err.Error(),
@@ -63,11 +62,8 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
-
-	// Check if a user with the same email already exists.
 	var existingUser model.User
 	if err := db.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
-		// Record found - email already exists.
 		resp := responses.ErrorResponse{
 			Error: "Email already exists",
 		}
@@ -82,12 +78,10 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	// Set timestamps for the new record.
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now
 
-	// Create the user along with any associated phone numbers.
 	if err := db.Create(&user).Error; err != nil {
 		resp := responses.ErrorResponse{
 			Error: err.Error(),
