@@ -1,4 +1,4 @@
-package home
+package user
 
 import (
 	"net/http"
@@ -9,7 +9,7 @@ import (
 
 	"rlp-member-service/api/http/responses"
 	"rlp-member-service/codes"
-	model "rlp-member-service/models"
+	"rlp-member-service/model"
 	"rlp-member-service/system"
 )
 

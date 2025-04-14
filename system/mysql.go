@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"rlp-member-service/config"
-	log "rlp-member-service/log"
-	model "rlp-member-service/models"
+	"rlp-member-service/log"
+	"rlp-member-service/model"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
@@ -70,9 +70,6 @@ func init() {
 	if err != nil {
 		log.Fatal(err) // Use sys.Logger to log fatal errors
 	}
-
-	// Enable debug mode if needed:
-	database = database.Debug()
 
 	// Assign the database instance to the global variable DB
 	DB = database

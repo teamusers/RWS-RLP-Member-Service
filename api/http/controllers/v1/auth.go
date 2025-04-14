@@ -1,4 +1,4 @@
-package home
+package v1
 
 import (
 	"crypto/hmac"
@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"rlp-member-service/codes"
-	model "rlp-member-service/models"
+	"rlp-member-service/model"
 	"rlp-member-service/system"
 
 	"github.com/gin-gonic/gin"
