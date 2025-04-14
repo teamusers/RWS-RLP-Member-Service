@@ -26,7 +26,7 @@ func getSecretKey(db *gorm.DB, appID string) (string, error) {
 	return channel.AppKey, nil
 }
 func AuthHandler(c *gin.Context) {
-	if c.Request.Method != http.MethodGet {
+	if c.Request.Method != http.MethodPost {
 		resp := responses.ErrorResponse{
 			Error: "Method Not Allowed",
 		}
