@@ -19,5 +19,6 @@ func Routers(e *gin.RouterGroup) {
 		usersGroup.GET("/register/:email/:sign_up_type", user.GetUser)
 		usersGroup.POST("/register", user.CreateUser)
 
+		//GET - LBE-5 - /api/v1/user/pin - burn PIN update
 	}
 }
