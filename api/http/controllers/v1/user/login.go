@@ -2,89 +2,104 @@ package user
 
 import (
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 
 	"rlp-member-service/api/http/responses"
 	"rlp-member-service/api/interceptor"
-	"rlp-member-service/codes"
 	"rlp-member-service/model"
 	"rlp-member-service/system"
 )
 
-func Login(c *gin.Context) {
+func VerifyOrRegisterOrLogin(c *gin.Context) {
+	email := c.Query("email")
+	shouldUpdateToken := c.Query("updateSessionToken") == "true"
 	appID := c.GetHeader("AppID")
-	if appID == "" {
-		resp := responses.ErrorResponse{
-			Error: "APPId not found",
-		}
-		c.JSON(http.StatusMethodNotAllowed, resp)
+
+	if email == "" {
+		c.JSON(http.StatusBadRequest, responses.ErrorResponse{Error: "Email is required"})
 		return
 	}
 
-	email := c.Param("email")
-	if email == "" {
-		resp := responses.ErrorResponse{
-			Error: "Valid email is required as query parameter",
-		}
-		c.JSON(http.StatusBadRequest, resp)
+	type RequestBody struct {
+		User model.User `json:"user"`
+	}
+	var body RequestBody
+	err := c.ShouldBindJSON(&body)
+	if err != nil && err.Error() != "EOF" {
+		// Only return if it's not an empty body (EOF = empty but valid)
+		c.JSON(http.StatusBadRequest, responses.ErrorResponse{Error: "Invalid request body"})
 		return
 	}
 
 	db := system.GetDb()
 	var user model.User
-	err := db.Where("email = ?", email).First(&user).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
 
-			resp := responses.APIResponse{
-				Message: "email not found",
-				Data: responses.LoginResponse{
-					LoginSessionToken: "",
-					LoginExpireIn:     0,
-				},
+	err = db.Where("email = ?", email).First(&user).Error
+	userExists := (err == nil)
+
+	if userExists {
+		if shouldUpdateToken {
+			if appID == "" {
+				c.JSON(http.StatusMethodNotAllowed, responses.ErrorResponse{Error: "AppID header required for session update"})
+				return
 			}
-			c.JSON(codes.CODE_EMAIL_NOTFOUND, resp)
+			token, err := interceptor.GenerateToken(appID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to generate token"})
+				return
+			}
+			expiration := 365 * 24 * time.Hour
+			user.SessionToken = token
+			user.SessionExpiry = time.Now().Add(expiration).Unix()
+
+			if err := db.Save(&user).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to update user"})
+				return
+			}
+		}
+
+		c.JSON(http.StatusOK, responses.APIResponse{
+			Message: "user found",
+			Data:    user,
+		})
+		return
+	}
+
+	// If user is not found and no body was provided, don't create
+
+	if reflect.DeepEqual(body.User, model.User{}) {
+		c.JSON(http.StatusNotFound, responses.ErrorResponse{Error: "User not found"})
+		return
+	}
+
+	// Create new user
+	newUser := body.User
+	newUser.Email = email
+	newUser.CreatedAt = time.Now()
+	newUser.UpdatedAt = time.Now()
+
+	if appID != "" {
+		token, err := interceptor.GenerateToken(appID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to generate token"})
 			return
 		}
-		resp := responses.ErrorResponse{
-			Error: err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, resp)
+		expiration := 365 * 24 * time.Hour
+		newUser.SessionToken = token
+		newUser.SessionExpiry = time.Now().Add(expiration).Unix()
+	}
+
+	if err := db.Create(&newUser).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to create user"})
 		return
 	}
 
-	token, err := interceptor.GenerateToken(appID)
-	if err != nil {
-		resp := responses.ErrorResponse{
-			Error: "Failed to generate token",
-		}
-		c.JSON(http.StatusInternalServerError, resp)
-		return
-	}
-	expiration := 365 * 24 * time.Hour
-	expiresAt := time.Now().Add(expiration).Unix()
-
-	user.SessionToken = token
-	user.SessionExpiry = expiresAt
-
-	if err := db.Save(&user).Error; err != nil {
-		resp := responses.ErrorResponse{
-			Error: "Failed to update user with session token",
-		}
-		c.JSON(http.StatusInternalServerError, resp)
-		return
-	}
-
-	resp := responses.APIResponse{
-		Message: "email found",
-		Data: responses.LoginResponse{
-			LoginSessionToken: token,
-			LoginExpireIn:     expiresAt,
-		},
-	}
-	c.JSON(http.StatusOK, resp)
-
+	c.JSON(http.StatusCreated, responses.APIResponse{
+		Message: "user created",
+		Data:    newUser,
+	})
 }
+
