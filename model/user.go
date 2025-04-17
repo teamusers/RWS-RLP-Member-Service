@@ -79,7 +79,7 @@ type User struct {
 	ExternalID            string    `gorm:"column:external_id" json:"external_id"`
 	ExternalTYPE          string    `gorm:"column:external_id_type" json:"external_id_type"`
 	Email                 string    `gorm:"column:email;size:255" json:"email"`
-	BurnPin               int64    `gorm:"column:burn_pin" json:"burn_pin"`
+	BurnPin               uint64    `gorm:"column:burn_pin" json:"burn_pin"`
 	SessionToken          string    `gorm:"column:session_token" json:"session_token"`
 	SessionExpiry         int64     `gorm:"column:session_expiry" json:"session_expiry"`
 	GR_ID                 string    `gorm:"column:gr_id" json:"gr_id"`
