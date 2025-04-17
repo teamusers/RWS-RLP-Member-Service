@@ -1,11 +1,11 @@
  
 database:
   type: mssql
-  host: 4.145.179.35 
-  instance:   # SQLEXPRESS
+  host: DESKTOP-QMALRMM
+  instance:   SQLEXPRESS # SQLEXPRESS
   port: 1433
   user: sa
-  password: my-secret-pw
+  password: 2good2btrue
   dbname: member_service
   sslmode: disable
   TimeZone: Asia/Shanghai
