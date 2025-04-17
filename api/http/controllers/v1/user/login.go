@@ -14,30 +14,26 @@ import (
 )
 
 func VerifyOrRegisterOrLogin(c *gin.Context) {
-	email := c.Query("email")
 	shouldUpdateToken := c.Query("updateSessionToken") == "true"
 	appID := c.GetHeader("AppID")
 
-	if email == "" {
-		c.JSON(http.StatusBadRequest, responses.ErrorResponse{Error: "Email is required"})
-		return
+	type RequestBody struct {
+		User  model.User `json:"user"`
+		Email string     `json:"email"`
 	}
 
-	type RequestBody struct {
-		User model.User `json:"user"`
-	}
 	var body RequestBody
-	err := c.ShouldBindJSON(&body)
-	if err != nil && err.Error() != "EOF" {
-		// Only return if it's not an empty body (EOF = empty but valid)
-		c.JSON(http.StatusBadRequest, responses.ErrorResponse{Error: "Invalid request body"})
+	c.ShouldBindJSON(&body)
+	email := body.Email
+	if email == "" {
+		c.JSON(http.StatusBadRequest, responses.ErrorResponse{Error: "Email is required"})
 		return
 	}
 
 	db := system.GetDb()
 	var user model.User
 
-	err = db.Where("email = ?", email).First(&user).Error
+	err := db.Where("email = ?", email).First(&user).Error
 	userExists := (err == nil)
 
 	if userExists {
@@ -59,23 +55,26 @@ func VerifyOrRegisterOrLogin(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to update user"})
 				return
 			}
+				
+			c.JSON(http.StatusOK, responses.APIResponse{
+				Message: "user updated",
+				Data:    responses.LoginResponse {LoginSessionToken: user.SessionToken, LoginExpireIn: user.SessionExpiry},
+			})
+			return
+	
 		}
 
-		var user_session responses.LoginResponse
-		user_session.LoginSessionToken = user.SessionToken
-		user_session.LoginExpireIn = user.SessionExpiry
-		
+
 		c.JSON(http.StatusOK, responses.APIResponse{
 			Message: "user found",
-			Data:   user_session,
+			Data:    responses.LoginResponse{},
 		})
 		return
 	}
 
-	// If user is not found and no body was provided, don't create
-
+	// If user is not found and no user data was provided, don't create
 	if reflect.DeepEqual(body.User, model.User{}) {
-		c.JSON(http.StatusNotFound, responses.ErrorResponse{Error: "User not found"})
+		c.JSON(201, responses.ErrorResponse{Error: "User not found"})
 		return
 	}
 
