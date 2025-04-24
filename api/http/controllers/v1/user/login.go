@@ -54,7 +54,7 @@ func Login(c *gin.Context) {
 		return
 
 	}
-	c.JSON(http.StatusOK, responses.ApiResponse[responses.LoginResponse]{
+	c.JSON(http.StatusConflict, responses.ApiResponse[responses.LoginResponse]{
 		Code:    codes.NOT_FOUND,
 		Message: "user not found",
 		Data:    responses.LoginResponse{},
