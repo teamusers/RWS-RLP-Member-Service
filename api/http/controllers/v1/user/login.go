@@ -17,7 +17,6 @@ import (
 func Login(c *gin.Context) {
 	appID := c.GetHeader("AppID")
 
-
 	var body requests.LoginRequest
 	c.ShouldBindJSON(&body)
 	email := body.Email
@@ -33,32 +32,31 @@ func Login(c *gin.Context) {
 	userExists := (err == nil)
 
 	if userExists {
-			token, err := interceptor.GenerateToken(appID)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
-				return
-			}
-			expiration := 365 * 24 * time.Hour
-			user.SessionToken = token
-			user.SessionExpiry = time.Now().Add(expiration).Unix()
-
-			if err := db.Save(&user).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
-				return
-			}
-				
-			c.JSON(http.StatusOK, responses.ApiResponse[responses.LoginResponse]{
-				Message: "user updated",
-				Data:    responses.LoginResponse {LoginSessionToken: user.SessionToken, LoginExpireIn: user.SessionExpiry},
-				Code: 	codes.FOUND,
-			})
+		token, err := interceptor.GenerateToken(appID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 			return
-	
+		}
+		expiration := 365 * 24 * time.Hour
+		user.SessionToken = token
+		user.SessionExpiry = time.Now().Add(expiration).Unix()
+
+		if err := db.Save(&user).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
+			return
+		}
+
+		c.JSON(http.StatusOK, responses.ApiResponse[responses.LoginResponse]{
+			Code:    codes.FOUND,
+			Message: "user updated",
+			Data:    responses.LoginResponse{LoginSessionToken: user.SessionToken, LoginExpireIn: user.SessionExpiry},
+		})
+		return
 
 	}
 	c.JSON(http.StatusOK, responses.ApiResponse[responses.LoginResponse]{
+		Code:    codes.NOT_FOUND,
 		Message: "user not found",
-		Data:    responses.LoginResponse {},
-		Code: 	codes.NOT_FOUND,
+		Data:    responses.LoginResponse{},
 	})
 }

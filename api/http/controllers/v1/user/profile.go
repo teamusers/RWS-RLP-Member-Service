@@ -12,7 +12,6 @@ import (
 	"rlp-member-service/system"
 )
 
-
 func UpdateBurnPin(c *gin.Context) {
 	db := system.GetDb()
 	var burn_pin requests.UpdateBurnPin
@@ -30,17 +29,17 @@ func UpdateBurnPin(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 			return
 		}
-	
+
 		resp := responses.ApiResponse[any]{
+			Code:    codes.SUCCESSFUL,
 			Message: "user updated",
-			Data: nil,
-			Code: codes.SUCCESSFUL,
+			Data:    nil,
 		}
 		c.JSON(http.StatusOK, resp)
 	}
 	c.JSON(http.StatusNotFound, responses.ApiResponse[any]{
+		Code:    codes.NOT_FOUND,
 		Message: "user not found",
-		Data:  nil,
-		Code: codes.NOT_FOUND,
+		Data:    nil,
 	})
 }
