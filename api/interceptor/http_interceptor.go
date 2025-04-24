@@ -17,10 +17,7 @@ func HttpInterceptor() gin.HandlerFunc {
 		// Get the Authorization header.
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			resp := responses.ErrorResponse{
-				Error: "Missing access token",
-			}
-			c.JSON(http.StatusUnauthorized, resp)
+			c.JSON(http.StatusUnauthorized, responses.MissingAuthTokenErrorResponse())
 			c.Abort()
 			return
 		}
@@ -28,10 +25,7 @@ func HttpInterceptor() gin.HandlerFunc {
 		// Expect the header to be in the format "Bearer <token>".
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			resp := responses.ErrorResponse{
-				Error: "Invalid token format",
-			}
-			c.JSON(http.StatusUnauthorized, resp)
+			c.JSON(http.StatusUnauthorized, responses.InvalidAuthTokenErrorResponse())
 			c.Abort()
 			return
 		}
@@ -47,10 +41,7 @@ func HttpInterceptor() gin.HandlerFunc {
 			return jwtSecret, nil
 		})
 		if err != nil {
-			resp := responses.ErrorResponse{
-				Error: "Invalid token: " + err.Error(),
-			}
-			c.JSON(http.StatusUnauthorized, resp)
+			c.JSON(http.StatusUnauthorized, responses.InvalidAuthTokenErrorResponse())
 			c.Abort()
 			return
 		}
@@ -59,12 +50,11 @@ func HttpInterceptor() gin.HandlerFunc {
 		if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
 			// Optionally, store the claims in the context for use by subsequent handlers.
 			c.Set("claims", claims)
+			// stash app_id for your audit middleware or handlers
+			c.Set("app_id", claims.AppID)
 			c.Next()
 		} else {
-			resp := responses.ErrorResponse{
-				Error: "Invalid token claims",
-			}
-			c.JSON(http.StatusUnauthorized, resp)
+			c.JSON(http.StatusUnauthorized, responses.InvalidAuthTokenErrorResponse())
 			c.Abort()
 			return
 		}

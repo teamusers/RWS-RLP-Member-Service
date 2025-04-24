@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 
+	"rlp-member-service/api/http/requests"
 	"rlp-member-service/api/http/responses"
 	"rlp-member-service/api/interceptor"
 	"rlp-member-service/codes"
@@ -16,75 +16,47 @@ import (
 
 func Login(c *gin.Context) {
 	appID := c.GetHeader("AppID")
-	if appID == "" {
-		resp := responses.ErrorResponse{
-			Error: "APPId not found",
-		}
-		c.JSON(http.StatusMethodNotAllowed, resp)
-		return
-	}
 
-	email := c.Param("email")
+	var body requests.LoginRequest
+	c.ShouldBindJSON(&body)
+	email := body.Email
 	if email == "" {
-		resp := responses.ErrorResponse{
-			Error: "Valid email is required as query parameter",
-		}
-		c.JSON(http.StatusBadRequest, resp)
+		c.JSON(http.StatusBadRequest, responses.InvalidRequestBodyErrorResponse())
 		return
 	}
 
 	db := system.GetDb()
 	var user model.User
-	err := db.Where("email = ?", email).First(&user).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
 
-			resp := responses.APIResponse{
-				Message: "email not found",
-				Data: responses.LoginResponse{
-					LoginSessionToken: "",
-					LoginExpireIn:     0,
-				},
-			}
-			c.JSON(codes.CODE_EMAIL_NOTFOUND, resp)
+	err := db.Where("email = ?", email).First(&user).Error
+	userExists := (err == nil)
+
+	if userExists {
+		token, err := interceptor.GenerateToken(appID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 			return
 		}
-		resp := responses.ErrorResponse{
-			Error: err.Error(),
+		expiration := 365 * 24 * time.Hour
+		user.SessionToken = token
+		user.SessionExpiry = time.Now().Add(expiration).Unix()
+
+		if err := db.Save(&user).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
+			return
 		}
-		c.JSON(http.StatusInternalServerError, resp)
+
+		c.JSON(http.StatusOK, responses.ApiResponse[responses.LoginResponse]{
+			Code:    codes.FOUND,
+			Message: "user updated",
+			Data:    responses.LoginResponse{LoginSessionToken: user.SessionToken, LoginExpireIn: user.SessionExpiry},
+		})
 		return
+
 	}
-
-	token, err := interceptor.GenerateToken(appID)
-	if err != nil {
-		resp := responses.ErrorResponse{
-			Error: "Failed to generate token",
-		}
-		c.JSON(http.StatusInternalServerError, resp)
-		return
-	}
-	expiration := 365 * 24 * time.Hour
-	expiresAt := time.Now().Add(expiration).Unix()
-
-	user.SessionToken = token
-	user.SessionExpiry = expiresAt
-
-	if err := db.Save(&user).Error; err != nil {
-		resp := responses.ErrorResponse{
-			Error: "Failed to update user with session token",
-		}
-		c.JSON(http.StatusInternalServerError, resp)
-		return
-	}
-
-	resp := responses.APIResponse{
-		Message: "email found",
-		Data: responses.LoginResponse{
-			LoginSessionToken: token,
-			LoginExpireIn:     expiresAt,
-		},
-	}
-	c.JSON(http.StatusOK, resp)
-
+	c.JSON(http.StatusOK, responses.ApiResponse[responses.LoginResponse]{
+		Code:    codes.NOT_FOUND,
+		Message: "user not found",
+		Data:    responses.LoginResponse{},
+	})
 }

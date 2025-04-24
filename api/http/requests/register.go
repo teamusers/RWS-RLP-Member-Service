@@ -1,6 +1,11 @@
 package requests
 
-type SignUpRequest struct {
-	Email      string `json:"email" binding:"required,email"`
-	SignUpType string `json:"sign_up_type" binding:"required"`
+import "rlp-member-service/model"
+
+type RegisterVerification struct {
+	Email string `json:"email"`
+}
+
+type Register struct {
+	User model.User `json:"user"`
 }
