@@ -24,19 +24,26 @@ func UpdateBurnPin(c *gin.Context) {
 		return
 	}
 	var user model.User
-	db.Where("email = ?", burn_pin.Email).First(&user)
+	err := db.Where("email = ?", burn_pin.Email).First(&user).Error
+	userExists := (err == nil)
 
-	user.BurnPin = burn_pin.BurnPin
-	if err := db.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to update user"})
-		return
+	if userExists {
+		user.BurnPin = burn_pin.BurnPin
+		if err := db.Save(&user).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to update user"})
+			return
+		}
+	
+		resp := responses.ApiResponse[any]{
+			Message: "user updated",
+			Data: nil,
+			Code: codes.SUCCESSFUL,
+		}
+		c.JSON(http.StatusOK, resp)
 	}
-
-	resp := responses.ApiResponse[any]{
-		Message: "user updated",
-		Data: nil,
-		Code: codes.SUCCESSFUL,
-	}
-	c.JSON(http.StatusOK, resp)
-
+	c.JSON(http.StatusNotFound, responses.ApiResponse[any]{
+		Message: "user not found",
+		Data:  nil,
+		Code: codes.NOT_FOUND,
+	})
 }
