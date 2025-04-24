@@ -2,21 +2,19 @@ package user
 
 import (
 	"net/http"
-
-	"github.com/gin-gonic/gin"
-
+	"rlp-member-service/api/http/requests"
 	"rlp-member-service/api/http/responses"
 	"rlp-member-service/codes"
 	"rlp-member-service/model"
 	"rlp-member-service/system"
+
+	"github.com/gin-gonic/gin"
 )
 
-func VerifyRegister(c *gin.Context) {
-	type RequestBody struct {
-		Email string     `json:"email"`
-	}
 
-	var body RequestBody
+func VerifyRegister(c *gin.Context) {
+
+	var body requests.RegisterVerification
 	c.ShouldBindJSON(&body)
 	email := body.Email
 	if email == "" {

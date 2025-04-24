@@ -6,21 +6,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"rlp-member-service/api/http/requests"
 	"rlp-member-service/api/http/responses"
 	"rlp-member-service/api/interceptor"
 	"rlp-member-service/codes"
-	"rlp-member-service/model"
 	"rlp-member-service/system"
 )
 
 func Register(c *gin.Context) {
 	appID := c.GetHeader("AppID")
 
-	type RequestBody struct {
-		User  model.User `json:"user"`
-	}
 
-	var body RequestBody
+	var body requests.Register
 	c.ShouldBindJSON(&body)
 
 	db := system.GetDb()

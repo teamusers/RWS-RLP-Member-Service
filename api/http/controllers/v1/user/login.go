@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"rlp-member-service/api/http/requests"
 	"rlp-member-service/api/http/responses"
 	"rlp-member-service/api/interceptor"
 	"rlp-member-service/codes"
@@ -16,11 +17,8 @@ import (
 func Login(c *gin.Context) {
 	appID := c.GetHeader("AppID")
 
-	type RequestBody struct {
-		Email string     `json:"email"`
-	}
 
-	var body RequestBody
+	var body requests.LoginRequest
 	c.ShouldBindJSON(&body)
 	email := body.Email
 	if email == "" {
