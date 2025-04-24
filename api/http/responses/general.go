@@ -2,10 +2,6 @@ package responses
 
 import "rlp-member-service/codes"
 
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
 // APIResponse is the standard envelope for successful operations.
 // The Data field contains the payload, which varies by endpoint.
 type ApiResponse[T any] struct {
@@ -58,10 +54,16 @@ func InvalidSignatureErrorResponse() ApiResponse[any] {
 	return DefaultResponse(codes.INVALID_SIGNATURE, "invalid signature")
 }
 
-func ExistingUserFoundErrorResponse() ApiResponse[any] {
-	return DefaultResponse(codes.EXISTING_USER_FOUND, "existing user found")
+func UnsuccessfulUpdate() ApiResponse[any] {
+	return DefaultResponse(codes.UNSUCCESSFUL, "unsuccessful update")
 }
 
-func ExistingUserNotFoundErrorResponse() ApiResponse[any] {
-	return DefaultResponse(codes.EXISTING_USER_NOT_FOUND, "existing user not found")
+func NotFound() ApiResponse[any] {
+	return DefaultResponse(codes.NOT_FOUND, "not found")
+}
+
+type DomainErrorResponse struct {
+	// Error provides the error detail.
+	// Example: "invalid json request body"
+	Error string `json:"error" example:"invalid json request body"`
 }

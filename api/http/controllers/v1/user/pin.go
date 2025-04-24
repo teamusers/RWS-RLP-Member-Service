@@ -17,10 +17,7 @@ func UpdateBurnPin(c *gin.Context) {
 	db := system.GetDb()
 	var burn_pin requests.UpdateBurnPin
 	if err := c.ShouldBindJSON(&burn_pin); err != nil {
-		resp := responses.ErrorResponse{
-			Error: err.Error(),
-		}
-		c.JSON(http.StatusBadRequest, resp)
+		c.JSON(http.StatusBadRequest, responses.InvalidRequestBodyErrorResponse())
 		return
 	}
 	var user model.User
@@ -30,7 +27,7 @@ func UpdateBurnPin(c *gin.Context) {
 	if userExists {
 		user.BurnPin = burn_pin.BurnPin
 		if err := db.Save(&user).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to update user"})
+			c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 			return
 		}
 	

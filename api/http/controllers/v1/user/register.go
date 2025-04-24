@@ -28,7 +28,7 @@ func Register(c *gin.Context) {
 
 		token, err := interceptor.GenerateToken(appID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to generate token"})
+			c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 			return
 		}
 		expiration := 365 * 24 * time.Hour
@@ -36,7 +36,7 @@ func Register(c *gin.Context) {
 		newUser.SessionExpiry = time.Now().Add(expiration).Unix()
 
 	if err := db.Create(&newUser).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to create user"})
+		c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 		return
 	}
 

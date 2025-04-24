@@ -22,7 +22,7 @@ func Login(c *gin.Context) {
 	c.ShouldBindJSON(&body)
 	email := body.Email
 	if email == "" {
-		c.JSON(http.StatusBadRequest, responses.ErrorResponse{Error: "Email is required"})
+		c.JSON(http.StatusBadRequest, responses.InvalidRequestBodyErrorResponse())
 		return
 	}
 
@@ -35,7 +35,7 @@ func Login(c *gin.Context) {
 	if userExists {
 			token, err := interceptor.GenerateToken(appID)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to generate token"})
+				c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 				return
 			}
 			expiration := 365 * 24 * time.Hour
@@ -43,7 +43,7 @@ func Login(c *gin.Context) {
 			user.SessionExpiry = time.Now().Add(expiration).Unix()
 
 			if err := db.Save(&user).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, responses.ErrorResponse{Error: "Failed to update user"})
+				c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 				return
 			}
 				

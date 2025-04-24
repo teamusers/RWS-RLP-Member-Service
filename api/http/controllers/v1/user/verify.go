@@ -18,7 +18,7 @@ func VerifyRegister(c *gin.Context) {
 	c.ShouldBindJSON(&body)
 	email := body.Email
 	if email == "" {
-		c.JSON(http.StatusBadRequest, responses.ErrorResponse{Error: "Email is required"})
+		c.JSON(http.StatusBadRequest, responses.InvalidRequestBodyErrorResponse())
 		return
 	}
 
