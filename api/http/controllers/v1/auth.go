@@ -3,19 +3,18 @@ package v1
 import (
 	"crypto/hmac"
 	"fmt"
+	"log"
 	"net/http"
-
+	"rlp-member-service/api/http/requests"
+	"rlp-member-service/api/http/responses"
+	"rlp-member-service/api/http/services"
+	"rlp-member-service/api/interceptor"
 	"rlp-member-service/codes"
 	"rlp-member-service/model"
 	"rlp-member-service/system"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-
-	"rlp-member-service/api/http/requests"
-	"rlp-member-service/api/http/responses"
-	"rlp-member-service/api/http/services"
-	"rlp-member-service/api/interceptor"
 )
 
 func getSecretKey(db *gorm.DB, appID string) (string, error) {
@@ -25,89 +24,73 @@ func getSecretKey(db *gorm.DB, appID string) (string, error) {
 	}
 	return channel.AppKey, nil
 }
+
+// AuthHandler godoc
+// @Summary      Generate authentication token
+// @Description  Validates AppID header and HMAC signature, then returns a JWT access token.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        AppID     header    string               true   "Client system AppID" default(app1234)
+// @Param        request   body      requests.AuthRequest true   "Authentication request payload"
+// @Success      200       {object}  responses.AuthSuccessResponse "JWT access token returned successfully"
+// @Failure      400       {object}  responses.ErrorResponse   "Malformed JSON in request body"
+// @Failure      401       {object}  responses.ErrorResponse          "AppID header is missing"
+// @Failure      401       {object}  responses.ErrorResponse          "AppID not recognized or unauthorized"
+// @Failure      401       {object}  responses.ErrorResponse      "HMAC signature mismatch"
+// @Failure      500       {object}  responses.ErrorResponse             "Unexpected server error"
+// @Router       /auth [post]
 func AuthHandler(c *gin.Context) {
-	if c.Request.Method != http.MethodPost {
-		resp := responses.ErrorResponse{
-			Error: "Method Not Allowed",
-		}
-		c.JSON(http.StatusMethodNotAllowed, resp)
-		return
-	}
-	if c.GetHeader("Content-Type") != "application/json" {
-		resp := responses.ErrorResponse{
-			Error: "Content-Type must be application/json",
-		}
-		c.JSON(http.StatusBadRequest, resp)
+
+	// Retrieve the AppID from header.
+	appID := c.GetHeader("AppID")
+	if appID == "" {
+		c.JSON(http.StatusUnauthorized, responses.MissingAppIdErrorResponse())
 		return
 	}
 
-	appID := c.GetHeader("AppID")
-	if appID == "" {
-		resp := responses.APIResponse{
-			Message: "invalid appid",
-			Data: responses.AuthResponse{
-				AccessToken: "",
-			},
-		}
-		c.JSON(codes.CODE_INVALID_APPID, resp)
-		return
-	}
+	// Decode the JSON body.
 	var req requests.AuthRequest
-	if err := c.BindJSON(&req); err != nil {
-		resp := responses.ErrorResponse{
-			Error: "Invalid JSON body",
-		}
-		c.JSON(http.StatusMethodNotAllowed, resp)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, responses.InvalidRequestBodyErrorResponse())
 		return
 	}
 
 	db := system.GetDb()
+	// Look up the secret key associated with the AppID.
 	secretKey, err := getSecretKey(db, appID)
 
 	if err != nil || secretKey == "" {
-		resp := responses.APIResponse{
-			Message: "invalid appid",
-			Data: responses.AuthResponse{
-				AccessToken: "",
-			},
-		}
-		c.JSON(codes.CODE_INVALID_APPID, resp)
+		c.JSON(http.StatusUnauthorized, responses.InvalidAppIdErrorResponse())
 		return
 	}
 
 	authReq, err := services.GenerateSignatureWithParams(appID, req.Nonce, req.Timestamp, secretKey)
+
 	if err != nil {
-		resp := responses.ErrorResponse{
-			Error: err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, resp)
+		log.Printf("error encountered generating auth signature: %v", err)
+		c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 		return
 	}
 
-	expectedSignature := authReq.Signature
-	if !hmac.Equal([]byte(expectedSignature), []byte(req.Signature)) {
-		resp := responses.APIResponse{
-			Message: "invalid signature",
-			Data: responses.AuthResponse{
-				AccessToken: "",
-			},
-		}
-		c.JSON(codes.CODE_INVALID_SIGNATURE, resp)
+	// Compare the computed signature with the provided signature.
+	if !hmac.Equal([]byte(authReq.Signature), []byte(req.Signature)) {
+		c.JSON(http.StatusUnauthorized, responses.InvalidSignatureErrorResponse())
 		return
 	}
 
+	// Call the exported GenerateToken function from the middleware package.
 	token, err := interceptor.GenerateToken(appID)
 	if err != nil {
-		resp := responses.ErrorResponse{
-			Error: "Failed to generate token",
-		}
-		c.JSON(http.StatusMethodNotAllowed, resp)
+		log.Printf("error encountered generating token: %v", err)
+		c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 		return
 	}
 
-	resp := responses.APIResponse{
+	resp := responses.ApiResponse[responses.AuthResponseData]{
+		Code:    codes.SUCCESSFUL,
 		Message: "token successfully generated",
-		Data: responses.AuthResponse{
+		Data: responses.AuthResponseData{
 			AccessToken: token,
 		},
 	}

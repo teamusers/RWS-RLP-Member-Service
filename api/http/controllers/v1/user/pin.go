@@ -7,6 +7,7 @@ import (
 
 	"rlp-member-service/api/http/requests"
 	"rlp-member-service/api/http/responses"
+	"rlp-member-service/codes"
 	"rlp-member-service/model"
 	"rlp-member-service/system"
 )
@@ -31,8 +32,10 @@ func UpdateBurnPin(c *gin.Context) {
 		return
 	}
 
-	resp := responses.APIResponse{
+	resp := responses.ApiResponse[any]{
 		Message: "user updated",
+		Data: nil,
+		Code: codes.SUCCESSFUL,
 	}
 	c.JSON(http.StatusOK, resp)
 
