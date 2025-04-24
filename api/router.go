@@ -2,9 +2,13 @@ package router
 
 import (
 	"fmt"
+	"log"
 
 	general "rlp-member-service/api/http"
+	"rlp-member-service/api/http/middleware"
 	"rlp-member-service/config"
+	"rlp-member-service/model"
+	"rlp-member-service/system"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,10 +27,16 @@ func Include(opts ...Option) {
 func Init() *gin.Engine {
 	// Include additional routers
 	Include(general.Routers)
+	
+	db := system.GetDb()
+	if err := model.MigrateAuditLog(db); err != nil {
+		log.Fatalf("audit log migration: %v", err)
+	}
 
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(middleware.AuditLogger(db))
 
 	apiGroup := r.Group("/api")
 	for _, opt := range options {
