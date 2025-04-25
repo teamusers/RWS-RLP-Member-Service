@@ -28,7 +28,7 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, responses.ApiResponse[any]{
+	c.JSON(http.StatusOK, responses.ApiResponse[any]{
 		Message: "user created",
 		Data:    newUser,
 		Code:    codes.SUCCESSFUL,
@@ -52,14 +52,14 @@ func VerifyUserExistence(c *gin.Context) {
 	userExists := (err == nil)
 
 	if userExists {
-		c.JSON(http.StatusOK, responses.ApiResponse[any]{
+		c.JSON(http.StatusConflict, responses.ApiResponse[any]{
 			Code:    codes.FOUND,
 			Message: "user found",
 			Data:    nil,
 		})
 		return
 	}
-	c.JSON(404, responses.ApiResponse[any]{
+	c.JSON(http.StatusOK, responses.ApiResponse[any]{
 		Code:    codes.NOT_FOUND,
 		Message: "user not found",
 		Data:    nil,

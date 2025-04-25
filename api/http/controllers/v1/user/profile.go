@@ -37,7 +37,7 @@ func UpdateBurnPin(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, resp)
 	}
-	c.JSON(http.StatusNotFound, responses.ApiResponse[any]{
+	c.JSON(http.StatusConflict, responses.ApiResponse[any]{
 		Code:    codes.NOT_FOUND,
 		Message: "user not found",
 		Data:    nil,
