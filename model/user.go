@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Date is a custom type based on time.Time that works with JSON and SQL.
@@ -75,19 +77,23 @@ func (d *Date) Scan(value interface{}) error {
 
 // User represents a user model that maps to a MySQL table.
 type User struct {
-	ID            uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	Email         string    `gorm:"column:email;size:255" json:"email"`
-	BurnPin       int64     `gorm:"column:burn_pin" json:"burn_pin"`
-	SessionToken  string    `gorm:"column:session_token" json:"session_token"`
-	SessionExpiry int64     `gorm:"column:session_expiry" json:"session_expiry"`
-	GR_ID         string    `gorm:"column:gr_id" json:"gr_id"`
-	RLP_ID        string    `gorm:"column:rlp_id" json:"rlp_id"`
-	RLP_NO        string    `gorm:"column:rlp_no" json:"rlp_no"`
-	CreatedAt     time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt     time.Time `gorm:"column:updated_at" json:"updated_at"`
+	ID        uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Email     string    `gorm:"column:email;size:255" json:"email"`
+	BurnPin   int64     `gorm:"column:burn_pin" json:"burn_pin"`
+	GR_ID     string    `gorm:"column:gr_id" json:"gr_id"`
+	RLP_ID    string    `gorm:"column:rlp_id" json:"rlp_id"`
+	RLP_NO    string    `gorm:"column:rlp_no" json:"rlp_no"`
+	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
+
+	Session *UserSession `gorm:"foreignKey:UserID" json:"session,omitempty"`
 }
 
 // TableName sets the table name for the User model.
 func (User) TableName() string {
 	return "users"
+}
+
+func MigrateUser(db *gorm.DB) error {
+	return db.AutoMigrate(&User{})
 }

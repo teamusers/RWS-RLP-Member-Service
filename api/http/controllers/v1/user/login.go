@@ -38,10 +38,13 @@ func Login(c *gin.Context) {
 			return
 		}
 		expiration := 365 * 24 * time.Hour
-		user.SessionToken = token
-		user.SessionExpiry = time.Now().Add(expiration).Unix()
+		newSession := model.UserSession{
+			UserID:        user.ID,
+			SessionToken:  token,
+			SessionExpiry: time.Now().Add(expiration).Unix(),
+		}
 
-		if err := db.Save(&user).Error; err != nil {
+		if err := db.Create(&newSession).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 			return
 		}
@@ -49,7 +52,10 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusOK, responses.ApiResponse[responses.LoginResponse]{
 			Code:    codes.FOUND,
 			Message: "user updated",
-			Data:    responses.LoginResponse{LoginSessionToken: user.SessionToken, LoginExpireIn: user.SessionExpiry},
+			Data: responses.LoginResponse{
+				LoginSessionToken: newSession.SessionToken,
+				LoginExpireIn:     newSession.SessionExpiry,
+			},
 		})
 		return
 
