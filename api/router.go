@@ -27,10 +27,16 @@ func Include(opts ...Option) {
 func Init() *gin.Engine {
 	// Include additional routers
 	Include(general.Routers)
-	
+
 	db := system.GetDb()
 	if err := model.MigrateAuditLog(db); err != nil {
 		log.Fatalf("audit log migration: %v", err)
+	}
+	if err := model.MigrateUser(db); err != nil {
+		log.Fatalf("user migration: %v", err)
+	}
+	if err := model.MigrateUserSession(db); err != nil {
+		log.Fatalf("user session migration: %v", err)
 	}
 
 	r := gin.New()
