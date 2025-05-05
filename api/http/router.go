@@ -18,6 +18,6 @@ func Routers(e *gin.RouterGroup) {
 		usersGroup.POST("/register", user.CreateUser)
 		usersGroup.POST("/login", user.Login)
 		usersGroup.PUT("/pin", user.UpdateBurnPin)
-		usersGroup.POST("/verify", user.VerifyUserExistence)
+		usersGroup.POST("/verify/:field", user.VerifyUserExistenceByField)
 	}
 }

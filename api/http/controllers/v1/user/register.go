@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -35,12 +36,23 @@ func CreateUser(c *gin.Context) {
 	})
 }
 
-func VerifyUserExistence(c *gin.Context) {
+func VerifyUserExistenceByField(c *gin.Context) {
+	field := c.Param("field")
 
-	var body requests.RegisterVerification
-	c.ShouldBindJSON(&body)
-	email := body.Email
-	if email == "" {
+	allowed := map[string]bool{"email": true, "gr_id": true}
+	if !allowed[field] {
+		c.JSON(http.StatusBadRequest, responses.InvalidQueryParametersErrorResponse())
+		return
+	}
+
+	var body map[string]string
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, responses.InvalidRequestBodyErrorResponse())
+		return
+	}
+
+	value, ok := body[field]
+	if !ok || value == "" {
 		c.JSON(http.StatusBadRequest, responses.InvalidRequestBodyErrorResponse())
 		return
 	}
@@ -48,7 +60,7 @@ func VerifyUserExistence(c *gin.Context) {
 	db := system.GetDb()
 	var user model.User
 
-	err := db.Where("email = ?", email).First(&user).Error
+	err := db.Where(fmt.Sprintf("%v = ?", field), value).First(&user).Error
 	userExists := (err == nil)
 
 	if userExists {
