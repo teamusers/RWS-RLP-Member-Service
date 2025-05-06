@@ -78,7 +78,7 @@ func (d *Date) Scan(value interface{}) error {
 // User represents a user model that maps to a MySQL table.
 type User struct {
 	ID        uint64    `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	Email     string    `gorm:"column:email;size:255" json:"email"`
+	Email     string    `gorm:"column:email;size:255;unique" json:"email"`
 	BurnPin   int64     `gorm:"column:burn_pin" json:"burn_pin"`
 	GR_ID     string    `gorm:"column:gr_id" json:"gr_id"`
 	RLP_ID    string    `gorm:"column:rlp_id" json:"rlp_id"`

@@ -3,6 +3,7 @@ package user
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,12 @@ func CreateUser(c *gin.Context) {
 	newUser.UpdatedAt = time.Now()
 
 	if err := db.Create(&newUser).Error; err != nil {
+		if strings.Contains(err.Error(), "duplicate") ||
+			strings.Contains(err.Error(), "UNIQUE") {
+			c.JSON(http.StatusConflict, responses.InternalErrorResponse())
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, responses.InternalErrorResponse())
 		return
 	}
